@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InsightTube — ملخصات يوتيوب</title>
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="insighttube-dashboard.css">
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">▶</div>
+      <div class="logo-text">
+        <h1>InsightTube</h1>
+        <p>youtube feed analyzer</p>
+      </div>
+    </div>
+    <div class="header-meta">
+      <div class="pulse"></div>
+      <span id="timestamp"></span>
+    </div>
+  </header>
+
+  <!-- STATS BAR -->
+  <div class="stats-bar">
+    <div class="stat-card purple">
+      <div class="stat-label">إجمالي الفيديوهات</div>
+      <div class="stat-value" id="stat-total">0</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">مع transcript</div>
+      <div class="stat-value" id="stat-transcript">0</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">بدون transcript</div>
+      <div class="stat-value" id="stat-no-transcript">0</div>
+    </div>
+    <div class="stat-card cyan">
+      <div class="stat-label">قنوات فريدة</div>
+      <div class="stat-value" id="stat-channels">0</div>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <!-- <div class="filter-bar">
+    <span class="filter-label">فلتر:</span>
+    <button class="filter-btn active" onclick="setFilter('all', this)">الكل</button>
+    <button class="filter-btn" onclick="setFilter('has', this)">مع transcript</button>
+    <button class="filter-btn" onclick="setFilter('no', this)">بدون transcript</button>
+    <div class="search-wrap">
+      <input type="text" id="search-input" placeholder="ابحث بالعنوان أو القناة..." oninput="onSearch()" />
+    </div>
+  </div> -->
+
+  <!-- VIDEOS -->
+  <div class="videos-grid" id="videos-grid"></div>
+  <div class="empty-state" id="empty-state">
+    <div style="font-size:48px">🔍</div>
+    <p>لا توجد نتائج مطابقة للبحث</p>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <span>insighttube v1.0</span>
+  </footer>
+
+</div>
+
+<script>
+// ============================================================
+// 👇 ضع نتائجك هنا — استبدل هذا المصفوفة بالنتائج الحقيقية
+// ============================================================
+const DATA = [];
+// ============================================================
+
+let currentFilter = 'has';
+let currentSearch = '';
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function onSearch() {
+  currentSearch = document.getElementById('search-input').value.toLowerCase();
+  render();
+}
+
+function getVideoId(v) {
+  if (v.videoId) return v.videoId;
+  const m = v.url?.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text ?? '';
+  return div.innerHTML;
+}
+
+function videoPreviewHtml(v) {
+  const id = getVideoId(v);
+  if (!id) {
+    return `<div class="video-preview"><div class="video-preview-placeholder">لا يوجد معاينة</div></div>`;
+  }
+  const thumb = `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
+  return `
+    <div class="video-preview" data-video-id="${id}">
+      <div class="video-preview-inner">
+        <video class="video-preview-player" poster="${thumb}" preload="none" muted playsinline></video>
+        <button type="button" class="video-preview-play" aria-label="تشغيل الفيديو"><span>▶</span></button>
+      </div>
+      <iframe class="video-preview-embed" title="${escapeHtml(v.title)}" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+    </div>`;
+}
+
+function getFiltered() {
+  return DATA.filter(v => {
+    const matchFilter =
+      currentFilter === 'all' ||
+      (currentFilter === 'has' && v.hasTranscript) ||
+      (currentFilter === 'no' && !v.hasTranscript);
+    const matchSearch =
+      !currentSearch ||
+      v.title?.toLowerCase().includes(currentSearch) ||
+      v.channel?.toLowerCase().includes(currentSearch);
+    return matchFilter && matchSearch;
+  });
+}
+
+function render() {
+  const filtered = getFiltered();
+  const grid = document.getElementById('videos-grid');
+  const empty = document.getElementById('empty-state');
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+  grid.innerHTML = filtered.map((v, i) => `
+    <div class="video-card ${!v.hasTranscript ? 'no-transcript-card' : ''}" style="animation-delay:${i * 0.06}s">
+      <div class="video-card-inner">
+        <div class="video-main">
+          <div class="video-header">
+            <span class="video-num">#${String(DATA.indexOf(v) + 1).padStart(2,'0')}</span>
+            <div class="video-title">
+              <a href="${v.url}" target="_blank" rel="noopener">${escapeHtml(v.title || 'بدون عنوان')}</a>
+            </div>
+          </div>
+          <div class="video-meta">
+            ${v.channel ? `<span class="channel-badge"><span class="channel-dot"></span>${v.channel}</span>` : ''}
+            <span class="transcript-badge ${v.hasTranscript ? 'has' : 'no'}">
+              ${v.hasTranscript ? '✓ transcript' : '✗ no transcript'}
+            </span>
+          </div>
+          <div class="summary-label">الملخص</div>
+          <p class="summary-text ${!v.hasTranscript ? 'no-transcript' : ''}">${escapeHtml(v.summary)}</p>
+        </div>
+        <div class="video-side">
+          ${videoPreviewHtml(v)}
+          <div>
+            <div class="side-label">Video ID</div>
+            <div class="video-id-box">${escapeHtml(v.videoId || getVideoId(v) || '—')}</div>
+          </div>
+          <a class="open-btn" href="${v.url}" target="_blank" rel="noopener">
+            ▶ فتح على يوتيوب
+          </a>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function updateStats() {
+  const total = DATA.length;
+  const withT = DATA.filter(v => v.hasTranscript).length;
+  const withoutT = DATA.filter(v => !v.hasTranscript).length;
+  const channels = new Set(DATA.map(v => v.channel).filter(Boolean)).size;
+
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-transcript').textContent = withT;
+  document.getElementById('stat-no-transcript').textContent = withoutT;
+  document.getElementById('stat-channels').textContent = channels;
+
+  const now = new Date();
+  document.getElementById('timestamp').textContent =
+    now.toLocaleDateString('ar-SA') + ' — ' + now.toLocaleTimeString('ar-SA', {hour:'2-digit', minute:'2-digit'});
+}
+
+document.getElementById('videos-grid').addEventListener('click', (e) => {
+  const btn = e.target.closest('.video-preview-play');
+  if (!btn) return;
+  const box = btn.closest('.video-preview');
+  const id = box?.dataset.videoId;
+  if (!id || box.classList.contains('is-playing')) return;
+  const iframe = box.querySelector('.video-preview-embed');
+  iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
+  box.classList.add('is-playing');
+});
+
+updateStats();
+render();
+</script>
+</body>
+</html>

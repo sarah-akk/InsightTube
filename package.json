@@ -1,0 +1,22 @@
+{
+  "name": "insighttube",
+  "version": "1.0.0",
+  "description": "Scrape your YouTube home feed, summarize videos in Arabic, and view results in a local RTL dashboard.",
+  "main": "homefeed.js",
+  "scripts": {
+    "start": "node homefeed.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
+    "@google/generative-ai": "^0.24.1",
+    "dotenv": "^17.4.2",
+    "openai": "^6.39.1",
+    "playwright": "^1.60.0",
+    "youtube-transcript": "^1.3.1"
+  }
+}
