@@ -86,9 +86,11 @@ OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 
 ### 3. YouTube cookies
 
-Export cookies from a browser where you are logged into YouTube and save them as `cookies.json` in the project root (JSON array format compatible with Playwright).
+On the first run, Playwright will prompt Google Account login, upon creating the process, a `cookies.json` file will be created that will be reused for future uses.
 
-The script loads these cookies, reloads YouTube, then scrapes `ytd-rich-item-renderer` items from the home page.
+I have no idea if it invalidates overtime :/
+
+It probably does.
 
 > **Security:** Do not commit `cookies.json` or `.env` to public repositories. Add `cookies.json` to `.gitignore` if you use git.
 
