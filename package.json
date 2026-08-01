@@ -5,6 +5,8 @@
   "main": "homefeed.js",
   "scripts": {
     "start": "node homefeed.js",
+    "fetch": "node fetch-transcripts.js",
+    "summarize": "node summarize-videos.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

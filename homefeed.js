@@ -15,11 +15,12 @@ if (!GEMINI_API_KEY || !OPENROUTER_API_KEY) {
 }
 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-lite' });
 
 const client = new OpenAI({
     baseURL: OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
     apiKey: OPENROUTER_API_KEY,
+    timeout: 120000, 
 });
 
 // ==================
@@ -28,14 +29,56 @@ async function getTranscript(videoId) {
     try {
         const transcript = await YoutubeTranscript.fetchTranscript(videoId);
         const text = transcript.map(x => x.text).join(' ');
+        console.log("transcript length:", text.length);
         return text;
     } catch (err) {
-        return null; 
+        console.error("❌ Transcript error:", err.message);
+        return null;
     }
 }
-
 // ==================
 
+
+// async function summarize(title, text) {
+
+//     const completion =
+//         await client.chat.completions.create({
+
+//             model: "poolside/laguna-s-2.1:free",
+//             messages: [
+//             {
+//                 role: "user",
+//                 content: `
+//                 لخص هذا الفيديو بالعربية.
+
+//                 العنوان:
+//                 ${title}
+
+//                 النص:
+//                 ${text}
+// `
+//             }
+//         ]
+//     });
+
+//     return completion.choices[0].message.content;
+// }
+
+// async function summarize(title, text) {
+//     const prompt = `
+//         لخص هذا الفيديو بالعربية.
+
+//         العنوان:
+//         ${title}
+
+//         النص:
+//         ${text}
+//         `;
+
+//     const result = await model.generateContent(prompt);
+
+//     return result.response.text();
+// }
 
 async function summarize(title, text) {
 
@@ -190,11 +233,12 @@ async function summarize(title, text) {
         if (transcript) {
             console.log(`    ✅ تم جلب النص (${transcript.length} حرف)`);
             console.log(`    🤖 جاري التلخيص بـ Gemini...`);
-            summary = await summarize(video.title, transcript);
-            console.log(`\n    📝 الملخص:\n`);
-            console.log(`    ${summary.split('\n').join('\n    ')}`);
-        } else {
-            console.log(`    ⚠️  لا يوجد transcript لهذا الفيديو`);
+
+            try {
+                summary = await summarize(video.title, transcript);
+            } catch (err) {
+                console.error("❌ Summarization failed:", err.message);
+            }
         }
 
         results.push({
