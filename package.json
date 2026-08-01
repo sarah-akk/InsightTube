@@ -19,6 +19,7 @@
     "dotenv": "^17.4.2",
     "openai": "^6.39.1",
     "playwright": "^1.60.0",
+    "user-agents": "^2.1.89",
     "youtube-transcript": "^1.3.1"
   }
 }

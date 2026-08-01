@@ -5,9 +5,12 @@ const { YoutubeTranscript } = require('youtube-transcript');
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const fs = require('fs');
 const { OpenAI } = require("openai");
+const UserAgent = require('user-agents');
 
 // ===== CONFIG =====
 const { GEMINI_API_KEY, OPENROUTER_API_KEY, OPENROUTER_BASE_URL } = process.env;
+
+const MANUAL_LOGIN_TIMEOUT = 90_000; //90s
 
 if (!GEMINI_API_KEY || !OPENROUTER_API_KEY) {
     console.error('❌ عيّن GEMINI_API_KEY و OPENROUTER_API_KEY في ملف .env (انظر .env.example)');
@@ -105,34 +108,74 @@ async function summarize(title, text) {
     return completion.choices[0].message.content;
 }
 
+// I stole this off Stackoverflow
+async function auth(){
+    const optionsBrowser = {
+        headless: false,
+        args: [
+            '--disable-blink-features=AutomationControlled',
+            '--no-sandbox',
+            '--disable-web-security',
+            '--disable-infobars',
+            '--disable-extensions',
+            '--start-maximized',
+            '--window-size=1280,720',
+        ],
+    };
+    const browser = await chromium.launch(optionsBrowser);
+
+    const optionsContext = {
+        userAgent: new UserAgent([/Chrome/i, { deviceCategory: 'desktop' }]).userAgent,
+        locale: 'en-US',
+        viewport: { width: 1280, height: 720 },
+        deviceScaleFactor: 1,
+    };
+
+    const context = await browser.newContext(optionsContext);
+    const page = await context.newPage();
+    await page.goto('https://accounts.google.com/');
+
+    // Give 90 seconds to complete the manual login.
+    const waitTime = MANUAL_LOGIN_TIMEOUT;
+    console.log(`You have ${waitTime / 1000} seconds to complete the manual login...`);
+    await page.waitForTimeout(waitTime);
+    await page.goto('https://www.youtube.com', {
+        timeout: 120000,
+        waitUntil: 'domcontentloaded'
+    });
+
+    // Save the session
+    await page.context().storageState({ path: 'cookies.json' });
+    console.log('Session saved in cookies.json');
+
+    await browser.close();
+}
+
 // "-----------------------------------------------------------------------------------------------------------------"
 
 (async () => {
-    const browser = await chromium.launchPersistentContext(
+    if(! fs.existsSync('cookies.json')){
+        await auth();
+    }
+    const browser = await chromium.launch(
         './youtube-session',
         { 
-            headless: false,
+            headless: true,
             args: ['--no-restore-last-session']
         }
     );
+
+    const context = await browser.newContext({
+        storageState: 'cookies.json'
+    });
     
-    const page = await browser.newPage();
+    const page = await context.newPage();
 
     await page.goto('https://www.youtube.com', {
         timeout: 120000,
         waitUntil: 'domcontentloaded'
     });
 
-    const rawCookies = JSON.parse(fs.readFileSync('./cookies.json', 'utf-8'));
-    const cookies = rawCookies.map(cookie => ({
-        ...cookie,
-        domain: '.youtube.com',
-        sameSite: ['Strict', 'Lax', 'None'].includes(cookie.sameSite)
-            ? cookie.sameSite
-            : 'None'
-    }));
-    
-    await browser.addCookies(cookies);
     
     try {
         await page.reload({ waitUntil: 'domcontentloaded', timeout: 30000 });
