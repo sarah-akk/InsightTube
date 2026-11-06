@@ -26,7 +26,7 @@ const client = new OpenAI({
 
 async function summarize(title, text) {
     const completion = await client.chat.completions.create({
-        model: 'nvidia/nemotron-3-super-120b-a12b:free',
+        model: 'nvidia/nemotron-3-super-120b-a12b',
         messages: [
             {
                 role: 'user',
